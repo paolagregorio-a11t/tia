@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Turnos con la tía</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#f6f7f4;--card:#ffffff;--fg:#26302b;--muted:#6b766f;--line:#dfe4de;
+--dani:#3f7cc4;--bea:#c4557a;--josean:#3d9a6a;--paola:#d08a2c;
+--display:"Fraunces",Georgia,serif;--body:"Nunito Sans",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#171c19;--card:#202723;--fg:#e6ebe7;--muted:#9aa59e;--line:#323b36;--dani:#6ea2e0;--bea:#e07c9f;--josean:#62c08e;--paola:#e8a84f;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px}
+.wrap{max-width:760px;margin:0 auto;padding:28px 16px 48px;display:grid;gap:22px}
+h1{font-family:var(--display);font-weight:600;font-size:1.9rem;margin:0}
+.sub{color:var(--muted);margin:4px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+select,input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:700;padding:8px 16px;border-radius:8px;border:0;background:var(--fg);color:var(--bg);cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--dani);outline-offset:2px}
+.msg{font-size:.85rem;color:var(--muted);width:100%;min-height:1em}
+.days{display:grid;gap:14px}
+.day{display:grid;gap:6px}
+.dh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.dh b{text-transform:capitalize}
+.dh small{color:var(--muted)}
+.bar{position:relative;height:26px;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.today .bar{border-color:var(--fg)}
+.seg{position:absolute;top:3px;bottom:3px;border-radius:4px;opacity:.9}
+.ticks{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.list{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-variant-numeric:tabular-nums}
+.chip button{background:none;color:var(--muted);padding:0 4px;font-size:1rem;line-height:1}
+.empty{color:var(--muted);font-size:.85rem;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Turnos con la tía</h1>
+    <p class="sub">Apunta cuándo puedes ir al hospital. Así vemos de un vistazo quién está cada día.</p>
+  </header>
+  <div class="legend" id="legend"></div>
+  <form id="f">
+    <label>Quién<select id="who"></select></label>
+    <label>Día<input type="date" id="date" required></label>
+    <label>Desde<input type="time" id="from" value="10:00" required></label>
+    <label>Hasta<input type="time" id="to" value="14:00" required></label>
+    <button type="submit">Apuntarme</button>
+    <div class="msg" id="msg"></div>
+  </form>
+  <div class="days" id="days"><span class="empty">Cargando…</span></div>
+</div>
+<script>
+const P={Dani:"--dani",Bea:"--bea",Josean:"--josean",Paola:"--paola"};
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const mins=t=>{const[h,m]=t.split(":").map(Number);return h*60+m};
+let data=[];
+$("legend").innerHTML=Object.keys(P).map(n=>`<span><i class="dot" style="background:var(${P[n]})"></i>${n}</span>`).join("");
+$("who").innerHTML=Object.keys(P).map(n=>`<option>${n}</option>`).join("");
+try{const w=localStorage.getItem("quien");if(P[w])$("who").value=w}catch(e){}
+$("date").value=iso(new Date());
+
+function render(){
+  const today=new Date(),out=[];
+  for(let i=-1;i<14;i++){
+    const d=new Date(today);d.setDate(d.getDate()+i);const k=iso(d);
+    const items=data.filter(x=>x.date===k&&P[x.who]).sort((a,b)=>a.from.localeCompare(b.from));
+    if(i<0&&!items.length)continue;
+    const segs=items.map(x=>{const a=mins(x.from);let b=mins(x.to);if(b<=a)b=1440;
+      return`<div class="seg" title="${x.who} ${x.from}–${x.to}" style="left:${a/14.4}%;width:${(b-a)/14.4}%;background:var(${P[x.who]})"></div>`}).join("");
+    const chips=items.length?items.map(x=>`<span class="chip"><i class="dot" style="background:var(${P[x.who]})"></i>${x.who} ${x.from}–${x.to}<button aria-label="Quitar" data-id="${x.id}">×</button></span>`).join("")
+      :`<span class="empty">Nadie apuntado todavía</span>`;
+    const name=d.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long"});
+    out.push(`<div class="day${i===0?" today":""}"><div class="dh"><b>${name}</b><small>${i===0?"hoy":i===1?"mañana":""}</small></div><div class="bar">${segs}</div><div class="ticks"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div><div class="list">${chips}</div></div>`);
+  }
+  $("days").innerHTML=out.join("");
+}
+
+async function load(){
+  try{const r=await fetch("/api/turnos");if(!r.ok)throw 0;data=await r.json();render()}
+  catch(e){$("msg").textContent="No se pudieron cargar los turnos."}
+}
+
+$("f").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const x={who:$("who").value,date:$("date").value,from:$("from").value,to:$("to").value};
+  try{localStorage.setItem("quien",x.who)}catch(e){}
+  $("msg").textContent="Guardando…";
+  const r=await fetch("/api/turnos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(x)}).catch(()=>null);
+  $("msg").textContent=r&&r.ok?"Apuntado.":"No se pudo guardar. Prueba otra vez.";
+  load();
+});
+
+$("days").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-id]");if(!b)return;
+  await fetch("/api/turnos?id="+encodeURIComponent(b.dataset.id),{method:"DELETE"}).catch(()=>null);
+  load();
+});
+
+load();
+setInterval(load,30000);
+</script>
+</body>
+</html>
